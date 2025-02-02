@@ -73,3 +73,4 @@ exports.register = async (req, res) => {
     res.status(500).json({ msg: 'Error del servidor' });
   }
 };
+//  Verificar si el archivo tiene un error de capitalización (mayúsculas/minúsculas)
