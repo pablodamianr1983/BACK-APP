@@ -5,13 +5,13 @@ const router = express.Router();
 const patientController = require('../controllers/patientcontroller');
 const authMiddleware = require('../middleware/authMiddleware');
 
-// Endpoints públicos: Se pueden ver los datos de los pacientes sin necesidad de iniciar sesión
-router.get('/', patientController.listPatients);
-router.get('/:id', patientController.getPatientById);
+// ✅ Rutas públicas (cualquier usuario puede acceder sin autenticación)
+router.get('/', patientController.listPatients); // Listar pacientes
+router.get('/:id', patientController.getPatientById); // Ver un paciente por ID
 
-// Endpoints protegidos: Para crear, actualizar o eliminar un paciente se requiere autenticación
-router.post('/', authMiddleware, patientController.createPatient);
-router.put('/:id', authMiddleware, patientController.updatePatient);
-router.delete('/:id', authMiddleware, patientController.deletePatient);
+// 🔒 Rutas protegidas (requieren autenticación)
+router.post('/', authMiddleware, patientController.createPatient); // Crear paciente
+router.put('/:id', authMiddleware, patientController.updatePatient); // Actualizar paciente
+router.delete('/:id', authMiddleware, patientController.deletePatient); // Eliminar paciente
 
 module.exports = router;
