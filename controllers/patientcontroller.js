@@ -1,5 +1,3 @@
-// controllers/patientcontroller.js
-
 const Patient = require('../models/Patient');
 const QRCode = require('qrcode');
 const { Op } = require('sequelize');
@@ -21,8 +19,7 @@ exports.createPatient = async (req, res) => {
     foto_perfil,
   } = req.body;
 
-  // Log de los datos recibidos
-  console.log('Datos recibidos para crear paciente:', req.body);
+  console.log('🛠 Recibiendo datos para crear paciente:', req.body);
 
   try {
     // Crear el paciente sin el QR Code inicialmente
@@ -37,29 +34,40 @@ exports.createPatient = async (req, res) => {
       telefono_emergencia,
       foto_perfil,
     });
-    console.log('Paciente creado (sin QR):', paciente);
+
+    console.log('✅ Paciente creado correctamente en la base de datos:', paciente);
 
     // Verificar que BASE_URL esté definida
     if (!process.env.BASE_URL) {
-      throw new Error('La variable de entorno BASE_URL no está definida');
+      console.error("❌ ERROR: La variable BASE_URL no está definida.");
+      return res.status(500).json({ msg: "Error del servidor: BASE_URL no está configurada." });
     }
 
-    // Generar la URL única del perfil y el QR Code correspondiente
+    // Generar la URL del perfil del paciente
     const profileUrl = `${process.env.BASE_URL}/patient/${paciente.id}`;
-    console.log('Profile URL generada:', profileUrl);
+    console.log("🔗 URL del perfil generada:", profileUrl);
 
-    const qrCodeDataURL = await QRCode.toDataURL(profileUrl);
-    console.log('QR Code generado:', qrCodeDataURL);
+    try {
+      // Generar el código QR
+      const qrCodeDataURL = await QRCode.toDataURL(profileUrl);
+      console.log("✅ Código QR generado correctamente.");
 
-    // Asignar la URL del QR Code al paciente y guardarlo en la base de datos
-    paciente.qr_code = qrCodeDataURL;
-    await paciente.save();
-    console.log('Paciente actualizado con QR Code:', paciente);
+      // Guardar el QR Code en la base de datos
+      await Patient.update(
+        { qr_code: qrCodeDataURL },
+        { where: { id: paciente.id } }
+      );
+      console.log("✅ Paciente actualizado con QR Code correctamente.");
 
-    res.status(201).json(paciente);
+    } catch (qrError) {
+      console.error("❌ ERROR al generar el QR Code:", qrError);
+      return res.status(500).json({ msg: "Error generando el código QR", error: qrError.message });
+    }
+
+    res.status(201).json({ msg: "Paciente creado correctamente", paciente });
   } catch (error) {
-    console.error('Error en createPatient:', error);
-    res.status(500).json({ msg: 'Error al crear el paciente', error: error.message });
+    console.error("❌ ERROR en `createPatient`:", error);
+    res.status(500).json({ msg: "Error al crear el paciente", error: error.message });
   }
 };
 
@@ -75,7 +83,7 @@ exports.getPatientById = async (req, res) => {
     }
     res.json(paciente);
   } catch (error) {
-    console.error('Error en getPatientById:', error);
+    console.error('❌ Error en getPatientById:', error);
     res.status(500).json({ msg: 'Error del servidor', error: error.message });
   }
 };
@@ -88,7 +96,7 @@ exports.listPatients = async (req, res) => {
     const patients = await Patient.findAll();
     res.json(patients);
   } catch (error) {
-    console.error('Error en listPatients:', error);
+    console.error('❌ Error en listPatients:', error);
     res.status(500).json({ msg: 'Error al obtener la lista de pacientes', error: error.message });
   }
 };
@@ -118,30 +126,44 @@ exports.updatePatient = async (req, res) => {
       foto_perfil,
     } = req.body;
 
-    paciente.nombre = nombre || paciente.nombre;
-    paciente.apellido = apellido || paciente.apellido;
-    paciente.fecha_nacimiento = fecha_nacimiento || paciente.fecha_nacimiento;
-    paciente.tipo_sangre = tipo_sangre || paciente.tipo_sangre;
-    paciente.diagnosticos = diagnosticos || paciente.diagnosticos;
-    paciente.formas_tratamiento = formas_tratamiento || paciente.formas_tratamiento;
-    paciente.telefono_contacto = telefono_contacto || paciente.telefono_contacto;
-    paciente.telefono_emergencia = telefono_emergencia || paciente.telefono_emergencia;
-    paciente.foto_perfil = foto_perfil || paciente.foto_perfil;
+    // Actualizar el paciente con los datos recibidos
+    await Patient.update(
+      {
+        nombre: nombre || paciente.nombre,
+        apellido: apellido || paciente.apellido,
+        fecha_nacimiento: fecha_nacimiento || paciente.fecha_nacimiento,
+        tipo_sangre: tipo_sangre || paciente.tipo_sangre,
+        diagnosticos: diagnosticos || paciente.diagnosticos,
+        formas_tratamiento: formas_tratamiento || paciente.formas_tratamiento,
+        telefono_contacto: telefono_contacto || paciente.telefono_contacto,
+        telefono_emergencia: telefono_emergencia || paciente.telefono_emergencia,
+        foto_perfil: foto_perfil || paciente.foto_perfil,
+      },
+      { where: { id } }
+    );
+
+    console.log("✅ Paciente actualizado correctamente.");
 
     // Verificar que BASE_URL esté definida
     if (!process.env.BASE_URL) {
-      throw new Error('La variable de entorno BASE_URL no está definida');
+      console.error("❌ ERROR: La variable BASE_URL no está definida.");
+      return res.status(500).json({ msg: "Error del servidor: BASE_URL no está configurada." });
     }
 
-    // Regenerar la URL única del perfil y el QR Code
-    const profileUrl = `${process.env.BASE_URL}/patient/${paciente.id}`;
+    // Regenerar la URL del perfil y el QR Code
+    const profileUrl = `${process.env.BASE_URL}/patient/${id}`;
     const qrCodeDataURL = await QRCode.toDataURL(profileUrl);
-    paciente.qr_code = qrCodeDataURL;
 
-    await paciente.save();
-    res.json(paciente);
+    await Patient.update(
+      { qr_code: qrCodeDataURL },
+      { where: { id } }
+    );
+
+    console.log("✅ Paciente actualizado con nuevo QR Code correctamente.");
+    
+    res.json({ msg: "Paciente actualizado correctamente", paciente });
   } catch (error) {
-    console.error('Error en updatePatient:', error);
+    console.error('❌ Error en updatePatient:', error);
     res.status(500).json({ msg: 'Error al actualizar el paciente', error: error.message });
   }
 };
@@ -159,7 +181,7 @@ exports.deletePatient = async (req, res) => {
     await paciente.destroy();
     res.json({ msg: 'Paciente eliminado exitosamente' });
   } catch (error) {
-    console.error('Error en deletePatient:', error);
+    console.error('❌ Error en deletePatient:', error);
     res.status(500).json({ msg: 'Error al eliminar el paciente', error: error.message });
   }
 };
